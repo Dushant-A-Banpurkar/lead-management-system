@@ -1,0 +1,158 @@
+openapi: 3.1.0
+info:
+  title: Leadflow API
+  version: 1.0.0
+  description: Authenticated lead management API. Sales users access their own leads; admins can access all leads.
+servers:
+  - url: http://localhost:4000/api
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      security: []
+      summary: API and MongoDB health
+      responses:
+        "200":
+          description: Health status
+  /auth/register:
+    post:
+      security: []
+      summary: Register a sales account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 100 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8, maxLength: 72 }
+      responses:
+        "201": { description: Account created; returns JWT and user profile }
+        "400": { description: Invalid request }
+        "409": { description: Email already registered }
+  /auth/login:
+    post:
+      security: []
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200": { description: JWT and user profile }
+        "401": { description: Invalid credentials }
+  /auth/me:
+    get:
+      summary: Get current user
+      responses:
+        "200": { description: Current user profile including role }
+        "401": { description: Authentication required }
+  /users/sales:
+    get:
+      summary: List sales accounts (admin only)
+      responses:
+        "200": { description: Sales users available for assignment }
+        "403": { description: Admin role required }
+  /leads:
+    get:
+      summary: List leads with filters and pagination
+      parameters:
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string, enum: [New, Contacted, Qualified, Converted, Lost] } }
+        - { in: query, name: from, schema: { type: string, format: date } }
+        - { in: query, name: to, schema: { type: string, format: date } }
+        - { in: query, name: ownerId, description: Admin only, schema: { type: string } }
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
+        - { in: query, name: sortBy, schema: { type: string, enum: [createdAt, name, followUpDate, status] } }
+        - { in: query, name: order, schema: { type: string, enum: [asc, desc] } }
+      responses:
+        "200": { description: Leads and pagination metadata }
+        "400": { description: Invalid filters }
+    post:
+      summary: Create a lead
+      description: Sales users create leads for themselves; admins may provide ownerId to assign to a sales user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "201": { description: Lead created }
+        "400": { description: Invalid lead details }
+  /leads/stats:
+    get:
+      summary: Lead counts by status
+      responses:
+        "200": { description: Counts for the current user, or all leads for admins }
+  /leads/export.csv:
+    get:
+      summary: Export all matching leads as CSV
+      responses:
+        "200": { description: CSV attachment }
+  /leads/activity:
+    get:
+      summary: Get recent activity events
+      responses:
+        "200": { description: Up to 100 recent events visible to the current role }
+  /leads/{id}/activity:
+    get:
+      summary: Read lead activity history
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Activity events }
+        "404": { description: Lead not found }
+  /leads/{id}:
+    patch:
+      summary: Update a lead
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "200": { description: Lead updated }
+        "403": { description: Sales users cannot reassign leads }
+        "404": { description: Lead not found }
+    delete:
+      summary: Delete a lead
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Lead deleted }
+        "404": { description: Lead not found }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LeadInput:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, maxLength: 120 }
+        email: { type: string, format: email }
+        phone: { type: string, maxLength: 40 }
+        company: { type: string, maxLength: 120 }
+        serviceInterested: { type: string, maxLength: 120 }
+        status: { type: string, enum: [New, Contacted, Qualified, Converted, Lost] }
+        followUpDate: { type: [string, "null"], format: date-time }
+        notes: { type: string, maxLength: 5000 }
+        ownerId: { type: string, description: Admin only; sales user MongoDB ID }
