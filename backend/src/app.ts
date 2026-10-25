@@ -8,8 +8,15 @@ import leadRoutes from "./routes/leadRoutes";
 import userRoutes from "./routes/userRoutes";
 
 const app = express();
+const allowedOrigins = new Set([
+  config.CLIENT_URL,
+  "https://lead-management-system-lake.vercel.app",
+]);
+
 app.disable("x-powered-by");
-app.use(cors({ origin: config.CLIENT_URL }));
+app.use(cors({
+  origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
+}));
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (_req, res) => {
