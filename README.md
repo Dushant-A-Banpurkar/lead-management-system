@@ -89,7 +89,8 @@ Requirements: Node.js 20+, npm, and a running MongoDB instance (local or MongoDB
 | `MONGODB_URI` | Yes | MongoDB connection string. |
 | `JWT_SECRET` | Yes | Private signing secret, minimum 32 characters. |
 | `JWT_EXPIRES_IN` | No | Token lifetime; defaults to `7d`. |
-| `CLIENT_URL` | No | Allowed frontend origin; defaults to `http://localhost:5173`. |
+| `CLIENT_URL` | No | Allowed frontend origin; defaults to `http://localhost:5173`. The deployed frontend `https://lead-management-system-lake.vercel.app` is also allowed. |
+| `RENDER_URL` | No | Public base URL of the Render API service (for example, `https://your-api.onrender.com`). When set, the server pings its `/api/health` endpoint at startup and every 14 minutes to help keep the service awake. |
 | `RESEND_API_KEY` | No | Resend API key. Enables scheduled reminders when used with `REMINDER_FROM_EMAIL`. |
 | `REMINDER_FROM_EMAIL` | No | Sender address verified with Resend. Must be configured with `RESEND_API_KEY`. |
 
@@ -157,7 +158,7 @@ Mongoose creates the `users` and `leads` collections. Users store a bcrypt hash,
 
 The frontend and API are independent deployables. A typical deployment uses MongoDB Atlas, the backend on Render/Railway, and the frontend on Vercel/Netlify:
 
-1. Set backend environment variables in the API host, including the Atlas `MONGODB_URI`, a generated `JWT_SECRET`, and `CLIENT_URL` equal to the deployed frontend origin.
+1. Set backend environment variables in the API host, including the Atlas `MONGODB_URI`, a generated `JWT_SECRET`, and `CLIENT_URL` equal to the deployed frontend origin. For Render, set `RENDER_URL` to the service's public base URL to enable periodic health pings. The Vercel origin `https://lead-management-system-lake.vercel.app` is already allowed by backend CORS; `CLIENT_URL` is allowed as well.
 2. Build the backend with `cd backend && npm install && npm run build`; run it with `npm start`.
 3. Set frontend `VITE_API_URL` to the deployed API base URL ending in `/api`.
 4. Build the frontend with `cd frontend && npm install && npm run build`; deploy the generated `frontend/dist` directory.
